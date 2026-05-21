@@ -26,7 +26,7 @@ public record ConversationResponse(
                 conversation.getRepositoryLocalPath(),
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt(),
-                "Great, I have the repository URL. In the next sprint I will inspect it and ask the setup questions needed for Docker, CI/CD, and Kubernetes."
+                "Repository URL received.\nNext: I will clone it and then ask whether to run a dummy PR permission check."
         );
     }
 }

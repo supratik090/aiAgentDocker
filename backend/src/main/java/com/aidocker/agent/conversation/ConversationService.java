@@ -38,6 +38,11 @@ public class ConversationService {
                 .toList();
     }
 
+    public Conversation findForUser(String conversationId, String githubUserId) {
+        return conversationRepository.findByIdAndGithubUserId(conversationId, githubUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Conversation was not found for the logged-in user."));
+    }
+
     public void updateRepositoryState(
             String githubUserId,
             String conversationId,

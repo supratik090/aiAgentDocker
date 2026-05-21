@@ -8,5 +8,7 @@ public interface RepositoryWorkspaceRepository extends MongoRepository<Repositor
 
     List<RepositoryWorkspace> findByGithubUserIdOrderByUpdatedAtDesc(String githubUserId);
 
+    List<RepositoryWorkspace> findByConversationIdAndGithubUserIdOrderByUpdatedAtDesc(String conversationId, String githubUserId);
+
     Optional<RepositoryWorkspace> findByIdAndGithubUserId(String id, String githubUserId);
 }

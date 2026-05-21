@@ -17,6 +17,7 @@ frontend/.vite/
 
 # Local clone workspace
 backend/workspaces/
+.ai-docker/
 
 # IDE
 .idea/

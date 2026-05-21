@@ -19,6 +19,8 @@ AI Docker Agent is a sprint-built assistant for Java Spring Maven repositories. 
 - JGit repository cloning into a local workspace.
 - Mongo-persisted conversation and repository workspace state.
 - Per-user conversation isolation based on the logged-in GitHub user.
+- Permission-check PR flow for branch creation, dummy commit, push, and pull request access before Docker, CI/CD, and Kubernetes generation.
+- Repository analysis persisted in MongoDB and written to `.ai-docker/repository-analysis.json` inside cloned workspaces.
 
 ## Project Layout
 
@@ -67,3 +69,15 @@ npm run dev
 ```
 
 The frontend runs on port `9041` by default and expects the backend at `http://localhost:9040`. Set `VITE_API_BASE_URL` if needed.
+
+## Permission Check PR
+
+After a repository is cloned, use the returned `repositoryWorkspaceId`:
+
+```bash
+curl -X POST http://localhost:9040/api/sprint2/dummy-pull-request \
+  -H "Content-Type: application/json" \
+  -d '{"repositoryWorkspaceId":"<workspace-id>","baseBranch":"main"}'
+```
+
+This endpoint requires the active GitHub login session from the browser flow.

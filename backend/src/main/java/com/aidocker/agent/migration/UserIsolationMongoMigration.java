@@ -22,6 +22,12 @@ public class UserIsolationMongoMigration {
                 .ensureIndex(new Index().on("githubUserId", Sort.Direction.ASC));
         mongoTemplate.indexOps("repository_workspaces")
                 .ensureIndex(new Index().on("githubUserId", Sort.Direction.ASC));
+        mongoTemplate.indexOps("repository_analysis")
+                .ensureIndex(new Index().on("repositoryWorkspaceId", Sort.Direction.ASC));
+        mongoTemplate.indexOps("repository_analysis")
+                .ensureIndex(new Index().on("conversationId", Sort.Direction.ASC));
+        mongoTemplate.indexOps("repository_analysis")
+                .ensureIndex(new Index().on("githubUserId", Sort.Direction.ASC));
     }
 
     @RollbackExecution

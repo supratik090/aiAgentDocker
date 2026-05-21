@@ -23,6 +23,8 @@ public class RepositoryWorkspace {
     private String branch;
     private String localPath;
     private String deploymentBranch;
+    private String repositoryAnalysisId;
+    private String repositoryAnalysisPath;
     private String lastCommitId;
     private String pullRequestUrl;
     private Integer pullRequestNumber;
@@ -88,6 +90,14 @@ public class RepositoryWorkspace {
         return deploymentBranch;
     }
 
+    public String getRepositoryAnalysisId() {
+        return repositoryAnalysisId;
+    }
+
+    public String getRepositoryAnalysisPath() {
+        return repositoryAnalysisPath;
+    }
+
     public String getLastCommitId() {
         return lastCommitId;
     }
@@ -119,6 +129,26 @@ public class RepositoryWorkspace {
     public void markCloned(Instant updatedAt) {
         this.status = RepositoryWorkspaceStatus.CLONED;
         this.errorMessage = null;
+        this.updatedAt = updatedAt;
+    }
+
+    public void markAnalyzing(Instant updatedAt) {
+        this.status = RepositoryWorkspaceStatus.ANALYZING;
+        this.errorMessage = null;
+        this.updatedAt = updatedAt;
+    }
+
+    public void markAnalyzed(String repositoryAnalysisId, String repositoryAnalysisPath, Instant updatedAt) {
+        this.repositoryAnalysisId = repositoryAnalysisId;
+        this.repositoryAnalysisPath = repositoryAnalysisPath;
+        this.status = RepositoryWorkspaceStatus.ANALYZED;
+        this.errorMessage = null;
+        this.updatedAt = updatedAt;
+    }
+
+    public void markAnalysisFailed(String errorMessage, Instant updatedAt) {
+        this.status = RepositoryWorkspaceStatus.ANALYSIS_FAILED;
+        this.errorMessage = errorMessage;
         this.updatedAt = updatedAt;
     }
 
