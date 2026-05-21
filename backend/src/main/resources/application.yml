@@ -1,0 +1,19 @@
+server:
+  port: ${SERVER_PORT:9040}
+
+spring:
+  application:
+    name: ai-docker-agent
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/aiDocker}
+
+mongock:
+  migration-scan-package:
+    - com.aidocker.agent.migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
