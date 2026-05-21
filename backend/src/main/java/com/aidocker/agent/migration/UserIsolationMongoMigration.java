@@ -7,25 +7,19 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 
-@ChangeUnit(id = "initial-conversation-indexes", order = "001", author = "ai-docker-agent")
-public class InitialMongoMigration {
+@ChangeUnit(id = "user-isolation-indexes", order = "002", author = "ai-docker-agent")
+public class UserIsolationMongoMigration {
 
     private final MongoTemplate mongoTemplate;
 
-    public InitialMongoMigration(MongoTemplate mongoTemplate) {
+    public UserIsolationMongoMigration(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
     }
 
     @Execution
     public void createIndexes() {
         mongoTemplate.indexOps("conversations")
-                .ensureIndex(new Index().on("gitUrl", Sort.Direction.ASC));
-        mongoTemplate.indexOps("conversations")
                 .ensureIndex(new Index().on("githubUserId", Sort.Direction.ASC));
-        mongoTemplate.indexOps("repository_workspaces")
-                .ensureIndex(new Index().on("conversationId", Sort.Direction.ASC));
-        mongoTemplate.indexOps("repository_workspaces")
-                .ensureIndex(new Index().on("gitUrl", Sort.Direction.ASC));
         mongoTemplate.indexOps("repository_workspaces")
                 .ensureIndex(new Index().on("githubUserId", Sort.Direction.ASC));
     }

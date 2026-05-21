@@ -2,11 +2,29 @@ server:
   port: ${SERVER_PORT:9040}
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: ai-docker-agent
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID:}
+            client-secret: ${GITHUB_CLIENT_SECRET:}
+            scope:
+              - read:user
+              - user:email
+              - repo
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/aiDocker}
+
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:9041}
+  repository:
+    clone-root: ${REPOSITORY_CLONE_ROOT:./workspaces/repositories}
 
 mongock:
   migration-scan-package:

@@ -15,6 +15,9 @@ frontend/.vite/
 *.env
 !.env.example
 
+# Local clone workspace
+backend/workspaces/
+
 # IDE
 .idea/
 .vscode/
