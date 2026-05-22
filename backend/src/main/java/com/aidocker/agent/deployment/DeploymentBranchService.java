@@ -1,4 +1,4 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
 import java.nio.file.Path;
 import java.time.Clock;
@@ -6,11 +6,11 @@ import org.eclipse.jgit.api.Git;
 import org.springframework.stereotype.Service;
 
 @Service
-public class BranchManagementService {
+public class DeploymentBranchService {
 
     private final Clock clock;
 
-    public BranchManagementService(Clock clock) {
+    public DeploymentBranchService(Clock clock) {
         this.clock = clock;
     }
 
@@ -23,7 +23,17 @@ public class BranchManagementService {
                     .call();
             return branchName;
         } catch (Exception exception) {
-            throw new Sprint2Exception("Unable to create deploy-ready branch.", exception);
+            throw new DeploymentPermissionException("Unable to create deploy-ready branch.", exception);
+        }
+    }
+
+    public void checkoutBranch(Path repositoryPath, String branchName) {
+        try (Git git = Git.open(repositoryPath.toFile())) {
+            git.checkout()
+                    .setName(branchName)
+                    .call();
+        } catch (Exception exception) {
+            throw new DeploymentPermissionException("Unable to checkout deployment branch.", exception);
         }
     }
 }

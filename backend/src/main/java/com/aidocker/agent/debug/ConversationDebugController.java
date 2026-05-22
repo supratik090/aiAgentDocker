@@ -4,6 +4,7 @@ import com.aidocker.agent.analysis.RepositoryAnalysisRepository;
 import com.aidocker.agent.auth.GitHubUser;
 import com.aidocker.agent.conversation.Conversation;
 import com.aidocker.agent.conversation.ConversationService;
+import com.aidocker.agent.deployment.DockerAiReviewRepository;
 import com.aidocker.agent.repository.RepositoryWorkspaceRepository;
 import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,15 +21,18 @@ public class ConversationDebugController {
     private final ConversationService conversationService;
     private final RepositoryWorkspaceRepository repositoryWorkspaceRepository;
     private final RepositoryAnalysisRepository repositoryAnalysisRepository;
+    private final DockerAiReviewRepository dockerAiReviewRepository;
 
     public ConversationDebugController(
             ConversationService conversationService,
             RepositoryWorkspaceRepository repositoryWorkspaceRepository,
-            RepositoryAnalysisRepository repositoryAnalysisRepository
+            RepositoryAnalysisRepository repositoryAnalysisRepository,
+            DockerAiReviewRepository dockerAiReviewRepository
     ) {
         this.conversationService = conversationService;
         this.repositoryWorkspaceRepository = repositoryWorkspaceRepository;
         this.repositoryAnalysisRepository = repositoryAnalysisRepository;
+        this.dockerAiReviewRepository = dockerAiReviewRepository;
     }
 
     @GetMapping("/conversations/{conversationId}")
@@ -41,7 +45,8 @@ public class ConversationDebugController {
         return Map.of(
                 "conversation", conversation,
                 "repositoryWorkspaces", repositoryWorkspaceRepository.findByConversationIdAndGithubUserIdOrderByUpdatedAtDesc(conversationId, gitHubUser.githubUserId()),
-                "repositoryAnalysis", repositoryAnalysisRepository.findByConversationIdAndGithubUserIdOrderByUpdatedAtDesc(conversationId, gitHubUser.githubUserId())
+                "repositoryAnalysis", repositoryAnalysisRepository.findByConversationIdAndGithubUserIdOrderByUpdatedAtDesc(conversationId, gitHubUser.githubUserId()),
+                "dockerAiReviews", dockerAiReviewRepository.findByConversationIdAndGithubUserIdOrderByCreatedAtDesc(conversationId, gitHubUser.githubUserId())
         );
     }
 }

@@ -26,7 +26,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/repositories/**").authenticated()
                         .requestMatchers("/api/analysis/**").authenticated()
                         .requestMatchers("/api/debug/**").authenticated()
-                        .requestMatchers("/api/sprint2/**").authenticated()
+                        .requestMatchers("/api/deployment-permissions/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2.successHandler(authenticationSuccessHandler))

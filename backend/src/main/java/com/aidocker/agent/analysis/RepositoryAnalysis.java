@@ -25,9 +25,15 @@ public class RepositoryAnalysis {
     private String gitUrl;
     private String localPath;
     private boolean mavenProject;
+    private boolean gradleProject;
+    private boolean npmProject;
     private boolean springBootProject;
     private List<PomMetadata> pomMetadata;
+    private List<GradleMetadata> gradleMetadata;
+    private List<NpmMetadata> npmMetadata;
     private List<String> pomPaths;
+    private List<String> gradlePaths;
+    private List<String> npmPaths;
     private List<String> applicationConfigPaths;
     private List<Integer> applicationPorts;
     private List<String> databaseTechnologies;
@@ -51,9 +57,15 @@ public class RepositoryAnalysis {
             String gitUrl,
             String localPath,
             boolean mavenProject,
+            boolean gradleProject,
+            boolean npmProject,
             boolean springBootProject,
             List<PomMetadata> pomMetadata,
+            List<GradleMetadata> gradleMetadata,
+            List<NpmMetadata> npmMetadata,
             List<String> pomPaths,
+            List<String> gradlePaths,
+            List<String> npmPaths,
             List<String> applicationConfigPaths,
             List<Integer> applicationPorts,
             List<String> databaseTechnologies,
@@ -73,9 +85,15 @@ public class RepositoryAnalysis {
         this.gitUrl = gitUrl;
         this.localPath = localPath;
         this.mavenProject = mavenProject;
+        this.gradleProject = gradleProject;
+        this.npmProject = npmProject;
         this.springBootProject = springBootProject;
         this.pomMetadata = pomMetadata;
+        this.gradleMetadata = gradleMetadata;
+        this.npmMetadata = npmMetadata;
         this.pomPaths = pomPaths;
+        this.gradlePaths = gradlePaths;
+        this.npmPaths = npmPaths;
         this.applicationConfigPaths = applicationConfigPaths;
         this.applicationPorts = applicationPorts;
         this.databaseTechnologies = databaseTechnologies;
@@ -121,6 +139,14 @@ public class RepositoryAnalysis {
         return mavenProject;
     }
 
+    public boolean isGradleProject() {
+        return gradleProject;
+    }
+
+    public boolean isNpmProject() {
+        return npmProject;
+    }
+
     public boolean isSpringBootProject() {
         return springBootProject;
     }
@@ -129,8 +155,24 @@ public class RepositoryAnalysis {
         return pomMetadata;
     }
 
+    public List<GradleMetadata> getGradleMetadata() {
+        return gradleMetadata;
+    }
+
+    public List<NpmMetadata> getNpmMetadata() {
+        return npmMetadata;
+    }
+
     public List<String> getPomPaths() {
         return pomPaths;
+    }
+
+    public List<String> getGradlePaths() {
+        return gradlePaths;
+    }
+
+    public List<String> getNpmPaths() {
+        return npmPaths;
     }
 
     public List<String> getApplicationConfigPaths() {

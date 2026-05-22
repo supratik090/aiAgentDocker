@@ -1,6 +1,6 @@
 # AI Docker Agent
 
-AI Docker Agent is a sprint-built assistant for Java Spring Maven repositories. The long-term flow is:
+AI Docker Agent is a deployment automation assistant for Java Spring Maven repositories. The long-term flow is:
 
 1. Ask the user to login with GitHub.
 2. Ask the user for an HTTPS Git URL with read access.
@@ -9,7 +9,7 @@ AI Docker Agent is a sprint-built assistant for Java Spring Maven repositories. 
 5. Add Docker, CI/CD, and Kubernetes deployment files.
 6. Open a pull request back to the source repository.
 
-## Sprint 1 Scope
+## Current Scope
 
 - Spring Boot backend service.
 - MongoDB connection for an existing Mongo database.
@@ -19,7 +19,8 @@ AI Docker Agent is a sprint-built assistant for Java Spring Maven repositories. 
 - JGit repository cloning into a local workspace.
 - Mongo-persisted conversation and repository workspace state.
 - Per-user conversation isolation based on the logged-in GitHub user.
-- Permission-check PR flow for branch creation, dummy commit, push, and pull request access before Docker, CI/CD, and Kubernetes generation.
+- Permission-check PR flow for branch creation, verification commit, push, and pull request access before Docker, CI/CD, and Kubernetes generation.
+- Docker deployment file generation for `Dockerfile`, `.dockerignore`, `.env.example`, `docker-compose.yml`, and `README_DEPLOY.md`, followed by a deployment pull request.
 - Repository analysis persisted in MongoDB and written to `.ai-docker/repository-analysis.json` inside cloned workspaces.
 
 ## Project Layout
@@ -27,7 +28,7 @@ AI Docker Agent is a sprint-built assistant for Java Spring Maven repositories. 
 ```text
 backend/   Spring Boot API and Mongo persistence
 frontend/  React chat dashboard
-docs/      Sprint notes and architecture decisions
+docs/      Product capability notes and architecture decisions
 ```
 
 ## Local Backend
@@ -51,6 +52,9 @@ Then set these values in `backend/.env`:
 ```text
 GITHUB_CLIENT_ID=your-client-id
 GITHUB_CLIENT_SECRET=your-client-secret
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=deepseek-coder
 ```
 
 ```bash
@@ -75,9 +79,21 @@ The frontend runs on port `9041` by default and expects the backend at `http://l
 After a repository is cloned, use the returned `repositoryWorkspaceId`:
 
 ```bash
-curl -X POST http://localhost:9040/api/sprint2/dummy-pull-request \
+curl -X POST http://localhost:9040/api/deployment-permissions/pull-request-check \
   -H "Content-Type: application/json" \
   -d '{"repositoryWorkspaceId":"<workspace-id>","baseBranch":"main"}'
 ```
 
 This endpoint requires the active GitHub login session from the browser flow.
+
+## Docker Config Generation
+
+After repository analysis, and after the user confirms in the chat, generate Docker deployment files and open a pull request:
+
+```bash
+curl -X POST http://localhost:9040/api/deployment-permissions/docker-configs \
+  -H "Content-Type: application/json" \
+  -d '{"repositoryWorkspaceId":"<workspace-id>"}'
+```
+
+Generated files are written into the cloned repository workspace and committed first. Then local Ollama `deepseek-coder` reviews them; any AI edits are committed separately before the deployment pull request is opened or updated.

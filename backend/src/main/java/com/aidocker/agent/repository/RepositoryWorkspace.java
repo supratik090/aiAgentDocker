@@ -184,6 +184,18 @@ public class RepositoryWorkspace {
         this.updatedAt = updatedAt;
     }
 
+    public void markDockerConfigsGenerated(Instant updatedAt) {
+        this.status = RepositoryWorkspaceStatus.DOCKER_CONFIGS_GENERATED;
+        this.errorMessage = null;
+        this.updatedAt = updatedAt;
+    }
+
+    public void markDockerConfigsFailed(String errorMessage, Instant updatedAt) {
+        this.status = RepositoryWorkspaceStatus.DOCKER_CONFIGS_FAILED;
+        this.errorMessage = errorMessage;
+        this.updatedAt = updatedAt;
+    }
+
     public void markFailed(String errorMessage, Instant updatedAt) {
         this.status = RepositoryWorkspaceStatus.CLONE_FAILED;
         this.errorMessage = errorMessage;

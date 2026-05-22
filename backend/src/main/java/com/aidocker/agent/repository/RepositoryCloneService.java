@@ -122,7 +122,7 @@ public class RepositoryCloneService {
                         analysis.analysisArtifactPath(),
                         analysis.executableModuleCandidates(),
                         "ANALYZED",
-                        analysis.executableModuleCandidates().isEmpty() ? "ASK_DUMMY_PR_PERMISSION" : "ASK_EXECUTABLE_MODULES",
+                        analysis.executableModuleCandidates().isEmpty() ? "ASK_PULL_REQUEST_PERMISSION_CHECK" : "ASK_EXECUTABLE_MODULES",
                         cloneAnalysisMessage(destination, actualBranch, analysis)
                 );
             }
@@ -148,7 +148,7 @@ public class RepositoryCloneService {
         if (!analysis.executableModuleCandidates().isEmpty()) {
             return baseMessage + "\n\nI found multiple executable module candidates. Please confirm which modules should be packaged as deployable services.";
         }
-        return baseMessage + "\n\nCreate a small dummy PR to confirm branch, push, and PR permissions?";
+        return baseMessage + "\n\nCreate a permission check pull request to confirm branch, push, and PR permissions?";
     }
 
     private Path destinationFor(String gitUrl, String githubUserId) {

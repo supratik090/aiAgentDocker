@@ -1,4 +1,4 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
 public record PullRequestResult(
         String url,

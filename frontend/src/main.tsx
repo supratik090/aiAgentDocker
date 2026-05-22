@@ -44,8 +44,19 @@ type AnalysisResponse = {
   assistantMessage: string;
 };
 
-type DummyPullRequestResponse = {
+type PermissionCheckPullRequestResponse = {
   repositoryWorkspaceId: string;
+  deploymentBranch: string;
+  commitId: string;
+  pullRequestUrl: string | null;
+  pullRequestNumber: number | null;
+  status: string;
+  assistantMessage: string;
+};
+
+type DockerConfigsResponse = {
+  repositoryWorkspaceId: string;
+  generatedFiles: string[];
   deploymentBranch: string;
   commitId: string;
   pullRequestUrl: string | null;
@@ -60,7 +71,7 @@ const initialMessages: Message[] = [
   {
     id: 'welcome',
     role: 'assistant',
-    text: 'Hi, I am your AI Docker Agent. Login with GitHub, then share an HTTPS Git URL for a Java Spring Maven project that I can read.'
+    text: 'Hi, I am your AI Docker Agent. Login with GitHub, then share an HTTPS Git URL for a Java (Maven/Gradle) or Node.js (NPM) project that I can read.'
   }
 ];
 
@@ -70,12 +81,14 @@ function App() {
   const [branch, setBranch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingPr, setIsCreatingPr] = useState(false);
+  const [isGeneratingDockerConfigs, setIsGeneratingDockerConfigs] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [workflowStatus, setWorkflowStatus] = useState('WAITING_FOR_GIT_URL');
   const [repositoryWorkspaceId, setRepositoryWorkspaceId] = useState<string | null>(null);
   const [repositoryAnalysisId, setRepositoryAnalysisId] = useState<string | null>(null);
   const [clonedBaseBranch, setClonedBaseBranch] = useState<string | null>(null);
-  const [showDummyPrPrompt, setShowDummyPrPrompt] = useState(false);
+  const [showPermissionCheckPrompt, setShowPermissionCheckPrompt] = useState(false);
+  const [showDockerConfigPrompt, setShowDockerConfigPrompt] = useState(false);
   const [executableModuleCandidates, setExecutableModuleCandidates] = useState<string[]>([]);
   const [selectedExecutableModules, setSelectedExecutableModules] = useState<string[]>([]);
   const [isSavingModules, setIsSavingModules] = useState(false);
@@ -111,7 +124,8 @@ function App() {
 
     const trimmedGitUrl = gitUrl.trim();
     setWorkflowStatus('GIT_URL_RECEIVED');
-    setShowDummyPrPrompt(false);
+    setShowPermissionCheckPrompt(false);
+    setShowDockerConfigPrompt(false);
     setRepositoryWorkspaceId(null);
     setRepositoryAnalysisId(null);
     setExecutableModuleCandidates([]);
@@ -168,7 +182,7 @@ function App() {
       setClonedBaseBranch(clone.branch);
       setExecutableModuleCandidates(clone.executableModuleCandidates ?? []);
       setSelectedExecutableModules(clone.executableModuleCandidates ?? []);
-      setShowDummyPrPrompt(clone.nextAction === 'ASK_DUMMY_PR_PERMISSION');
+      setShowPermissionCheckPrompt(clone.nextAction === 'ASK_PULL_REQUEST_PERMISSION_CHECK');
       setMessages((current) => [
         ...current,
         {
@@ -183,7 +197,7 @@ function App() {
           {
             id: crypto.randomUUID(),
             role: 'assistant',
-            text: 'Which Maven modules should be treated as executable services for Docker, CI/CD, and Kubernetes generation?'
+            text: 'Which project modules should be treated as executable services for Docker, CI/CD, and Kubernetes generation?'
           }
         ]);
       }
@@ -202,21 +216,21 @@ function App() {
     }
   }
 
-  async function createDummyPullRequest() {
+  async function createPermissionCheckPullRequest() {
     if (!repositoryWorkspaceId) {
       return;
     }
 
-    setShowDummyPrPrompt(false);
+    setShowPermissionCheckPrompt(false);
     setIsCreatingPr(true);
-    setWorkflowStatus('CREATING_DUMMY_PR');
+    setWorkflowStatus('CREATING_PERMISSION_CHECK_PR');
     setMessages((current) => [
       ...current,
-      { id: crypto.randomUUID(), role: 'user', text: 'Yes, create the dummy pull request.' }
+      { id: crypto.randomUUID(), role: 'user', text: 'Yes, create the permission check pull request.' }
     ]);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/sprint2/dummy-pull-request`, {
+      const response = await fetch(`${apiBaseUrl}/api/deployment-permissions/pull-request-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -228,17 +242,23 @@ function App() {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message ?? 'The backend could not create the dummy pull request.');
+        throw new Error(errorBody?.message ?? 'The backend could not create the permission check pull request.');
       }
 
-      const pullRequest: DummyPullRequestResponse = await response.json();
+      const pullRequest: PermissionCheckPullRequestResponse = await response.json();
       setWorkflowStatus(pullRequest.status);
+      setShowDockerConfigPrompt(true);
       setMessages((current) => [
         ...current,
         {
           id: crypto.randomUUID(),
           role: 'assistant',
           text: pullRequest.assistantMessage
+        },
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          text: 'Do you want me to generate Dockerfile, .dockerignore, .env.example, docker-compose.yml, and README_DEPLOY.md, review them with local deepseek-coder, then create a pull request with those files?'
         }
       ]);
     } catch (error) {
@@ -248,11 +268,62 @@ function App() {
         {
           id: crypto.randomUUID(),
           role: 'assistant',
-          text: error instanceof Error ? error.message : 'Something went wrong while creating the dummy pull request.'
+          text: error instanceof Error ? error.message : 'Something went wrong while creating the permission check pull request.'
         }
       ]);
     } finally {
       setIsCreatingPr(false);
+    }
+  }
+
+  async function generateDockerConfigs() {
+    if (!repositoryWorkspaceId) {
+      return;
+    }
+
+    setShowDockerConfigPrompt(false);
+    setIsGeneratingDockerConfigs(true);
+    setWorkflowStatus('GENERATING_DOCKER_CONFIGS');
+    setMessages((current) => [
+      ...current,
+      { id: crypto.randomUUID(), role: 'user', text: 'Yes, generate the Docker deployment configuration, review it locally, and create a pull request.' }
+    ]);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/deployment-permissions/docker-configs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ repositoryWorkspaceId })
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message ?? 'The backend could not generate Docker deployment files.');
+      }
+
+      const dockerConfigs: DockerConfigsResponse = await response.json();
+      setWorkflowStatus(dockerConfigs.status);
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          text: dockerConfigs.assistantMessage
+        }
+      ]);
+    } catch (error) {
+      setWorkflowStatus('DOCKER_CONFIGS_FAILED');
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          text: error instanceof Error ? error.message : 'Something went wrong while generating Docker deployment files.'
+        }
+      ]);
+    } finally {
+      setIsGeneratingDockerConfigs(false);
     }
   }
 
@@ -283,7 +354,7 @@ function App() {
         { id: crypto.randomUUID(), role: 'user', text: `Executable modules: ${analysis.selectedExecutableModules.join(', ')}` },
         { id: crypto.randomUUID(), role: 'assistant', text: analysis.assistantMessage }
       ]);
-      setShowDummyPrPrompt(true);
+      setShowPermissionCheckPrompt(true);
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -328,15 +399,29 @@ function App() {
     }
   }
 
-  function skipDummyPullRequest() {
-    setShowDummyPrPrompt(false);
+  function skipPermissionCheckPullRequest() {
+    setShowPermissionCheckPrompt(false);
+    setShowDockerConfigPrompt(true);
     setMessages((current) => [
       ...current,
-      { id: crypto.randomUUID(), role: 'user', text: 'No, skip the dummy pull request for now.' },
+      { id: crypto.randomUUID(), role: 'user', text: 'No, skip the permission check pull request for now.' },
       {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: 'Permission check skipped.\nNext: I will ask for Docker, CI/CD, and Kubernetes details.'
+        text: 'Permission check skipped.\nDo you want me to generate Dockerfile, .dockerignore, .env.example, docker-compose.yml, and README_DEPLOY.md, review them with local deepseek-coder, then create a pull request with those files?'
+      }
+    ]);
+  }
+
+  function skipDockerConfigs() {
+    setShowDockerConfigPrompt(false);
+    setMessages((current) => [
+      ...current,
+      { id: crypto.randomUUID(), role: 'user', text: 'No, do not generate Docker configs yet.' },
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: 'Docker config generation skipped. I can generate Dockerfile, .dockerignore, .env.example, docker-compose.yml, and README_DEPLOY.md, review them with local deepseek-coder, then open a pull request when you are ready.'
       }
     ]);
   }
@@ -361,7 +446,7 @@ function App() {
           <div className="brand-icon"><GitBranch size={22} /></div>
           <div>
             <h1>AI Docker Agent</h1>
-            <p>Sprint 1 workspace</p>
+            <p>Deployment workspace</p>
           </div>
         </div>
         <div className="status-panel">
@@ -401,13 +486,25 @@ function App() {
               <p>{renderMessageText(message.text)}</p>
             </article>
           ))}
-          {showDummyPrPrompt && (
-            <div className="action-row" aria-label="Dummy pull request confirmation">
-              <button type="button" onClick={createDummyPullRequest} disabled={isCreatingPr}>
+          {showPermissionCheckPrompt && (
+            <div className="action-row" aria-label="Permission check pull request confirmation">
+              <button type="button" onClick={createPermissionCheckPullRequest} disabled={isCreatingPr}>
                 {isCreatingPr ? <Loader2 className="spin" size={18} /> : <Check size={18} />}
-                <span>Create dummy PR</span>
+                <span>Create permission check PR</span>
               </button>
-              <button type="button" className="secondary" onClick={skipDummyPullRequest} disabled={isCreatingPr}>
+              <button type="button" className="secondary" onClick={skipPermissionCheckPullRequest} disabled={isCreatingPr}>
+                <X size={18} />
+                <span>Skip</span>
+              </button>
+            </div>
+          )}
+          {showDockerConfigPrompt && (
+            <div className="action-row" aria-label="Docker config generation confirmation">
+              <button type="button" onClick={generateDockerConfigs} disabled={isGeneratingDockerConfigs}>
+                {isGeneratingDockerConfigs ? <Loader2 className="spin" size={18} /> : <Check size={18} />}
+                <span>Generate, review, and PR</span>
+              </button>
+              <button type="button" className="secondary" onClick={skipDockerConfigs} disabled={isGeneratingDockerConfigs}>
                 <X size={18} />
                 <span>Skip</span>
               </button>

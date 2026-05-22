@@ -25,6 +25,10 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:9041}
   repository:
     clone-root: ${REPOSITORY_CLONE_ROOT:./workspaces/repositories}
+  ollama:
+    enabled: ${OLLAMA_ENABLED:true}
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL:deepseek-coder}
 
 mongock:
   migration-scan-package:

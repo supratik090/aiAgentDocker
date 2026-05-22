@@ -1,8 +1,8 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record CreateDummyPullRequestRequest(
+public record CreatePermissionCheckPullRequestRequest(
         @NotBlank
         String repositoryWorkspaceId,
         String baseBranch

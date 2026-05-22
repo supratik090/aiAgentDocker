@@ -1,4 +1,4 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
 import java.net.URI;
 

@@ -26,7 +26,7 @@ public record ConversationResponse(
                 conversation.getRepositoryLocalPath(),
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt(),
-                "Repository URL received.\nNext: I will clone it and then ask whether to run a dummy PR permission check."
+                "Repository URL received.\nNext: I will clone it and then ask whether to run a pull request permission check."
         );
     }
 }

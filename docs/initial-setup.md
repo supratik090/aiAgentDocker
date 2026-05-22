@@ -1,4 +1,4 @@
-# Sprint 1 - Basic Project Setup
+# Initial Project Setup
 
 ## Goals
 

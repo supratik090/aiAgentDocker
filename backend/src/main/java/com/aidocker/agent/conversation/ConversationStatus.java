@@ -12,5 +12,7 @@ public enum ConversationStatus {
     BRANCH_READY,
     PUSHED,
     PR_CREATED,
-    PR_FAILED
+    PR_FAILED,
+    DOCKER_CONFIGS_GENERATED,
+    DOCKER_CONFIGS_FAILED
 }

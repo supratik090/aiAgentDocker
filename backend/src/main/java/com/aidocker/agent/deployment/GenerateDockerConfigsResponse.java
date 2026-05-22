@@ -1,7 +1,10 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
-public record CreateDummyPullRequestResponse(
+import java.util.List;
+
+public record GenerateDockerConfigsResponse(
         String repositoryWorkspaceId,
+        List<String> generatedFiles,
         String deploymentBranch,
         String commitId,
         String pullRequestUrl,

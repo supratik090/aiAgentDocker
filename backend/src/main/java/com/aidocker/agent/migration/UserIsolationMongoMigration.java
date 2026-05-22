@@ -32,6 +32,6 @@ public class UserIsolationMongoMigration {
 
     @RollbackExecution
     public void rollback() {
-        // Index rollback is intentionally empty for Sprint 1.
+        // Index rollback is intentionally empty for the user isolation schema.
     }
 }

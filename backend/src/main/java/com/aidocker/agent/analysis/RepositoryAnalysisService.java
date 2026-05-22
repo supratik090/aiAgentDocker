@@ -70,6 +70,8 @@ public class RepositoryAnalysisService {
 
         try {
             List<Path> files = listFiles(repositoryPath);
+            
+            // Maven detection
             List<Path> pomFiles = files.stream()
                     .filter(path -> path.getFileName().toString().equals("pom.xml"))
                     .toList();
@@ -77,18 +79,56 @@ public class RepositoryAnalysisService {
                     .map(path -> parsePom(repositoryPath, path))
                     .toList();
             List<String> pomPaths = relativize(repositoryPath, pomFiles);
+
+            // Gradle detection
+            List<Path> gradleFiles = files.stream()
+                    .filter(path -> {
+                        String name = path.getFileName().toString();
+                        return name.equals("build.gradle") || name.equals("build.gradle.kts");
+                    })
+                    .toList();
+            List<GradleMetadata> gradleMetadata = gradleFiles.stream()
+                    .map(path -> parseGradle(repositoryPath, path))
+                    .toList();
+            List<String> gradlePaths = relativize(repositoryPath, gradleFiles);
+
+            // NPM detection
+            List<Path> npmFiles = files.stream()
+                    .filter(path -> path.getFileName().toString().equals("package.json"))
+                    .toList();
+            List<NpmMetadata> npmMetadata = npmFiles.stream()
+                    .map(path -> parseNpm(repositoryPath, path))
+                    .toList();
+            List<String> npmPaths = relativize(repositoryPath, npmFiles);
+
             List<Path> configFiles = files.stream()
                     .filter(this::isApplicationConfig)
                     .toList();
             List<String> configPaths = relativize(repositoryPath, configFiles);
             List<Integer> ports = detectPorts(configFiles);
-            List<String> databases = detectDatabaseTechnologies(pomMetadata, pomFiles);
+            List<String> databases = detectDatabaseTechnologies(pomFiles, gradleFiles, npmFiles);
             List<String> environmentVariables = detectEnvironmentVariables(files);
-            List<String> executableModuleCandidates = pomMetadata.stream()
+            
+            List<String> executableModuleCandidates = new ArrayList<>();
+            pomMetadata.stream()
                     .filter(PomMetadata::executableCandidate)
                     .map(PomMetadata::path)
-                    .toList();
-            boolean springBootProject = pomMetadata.stream().anyMatch(PomMetadata::springBootProject);
+                    .forEach(executableModuleCandidates::add);
+            gradleMetadata.stream()
+                    .filter(GradleMetadata::executableCandidate)
+                    .map(GradleMetadata::path)
+                    .forEach(executableModuleCandidates::add);
+            npmMetadata.stream()
+                    .filter(NpmMetadata::executableCandidate)
+                    .map(NpmMetadata::path)
+                    .forEach(executableModuleCandidates::add);
+
+            boolean hasMaven = !pomFiles.isEmpty();
+            boolean hasGradle = !gradleFiles.isEmpty();
+            boolean hasNpm = !npmFiles.isEmpty();
+
+            boolean springBootProject = pomMetadata.stream().anyMatch(PomMetadata::springBootProject)
+                    || gradleMetadata.stream().anyMatch(GradleMetadata::springBootProject);
             Path artifactPath = writeAnalysisArtifact(repositoryPath);
 
             RepositoryAnalysis analysis = repositoryAnalysisRepository.save(new RepositoryAnalysis(
@@ -98,10 +138,16 @@ public class RepositoryAnalysisService {
                     workspace.getGithubLogin(),
                     workspace.getGitUrl(),
                     workspace.getLocalPath(),
-                    !pomFiles.isEmpty(),
+                    hasMaven,
+                    hasGradle,
+                    hasNpm,
                     springBootProject,
                     pomMetadata,
+                    gradleMetadata,
+                    npmMetadata,
                     pomPaths,
+                    gradlePaths,
+                    npmPaths,
                     configPaths,
                     ports,
                     databases,
@@ -200,6 +246,7 @@ public class RepositoryAnalysisService {
                     .filter(path -> !path.toString().contains("/.git/"))
                     .filter(path -> !path.toString().contains("/target/"))
                     .filter(path -> !path.toString().contains("/build/"))
+                    .filter(path -> !path.toString().contains("/node_modules/"))
                     .sorted(Comparator.comparing(Path::toString))
                     .toList();
         }
@@ -242,6 +289,96 @@ public class RepositoryAnalysisService {
             );
         } catch (Exception exception) {
             throw new RepositoryAnalysisException("Unable to parse pom.xml at " + pomPath, exception);
+        }
+    }
+
+    private GradleMetadata parseGradle(Path repositoryPath, Path gradlePath) {
+        try {
+            String content = Files.readString(gradlePath);
+            String group = null;
+            String version = null;
+            String javaVersion = null;
+
+            Pattern groupPattern = Pattern.compile("(?m)^\\s*group\\s*=\\s*['\"]([^'\"]+)['\"]");
+            Matcher groupMatcher = groupPattern.matcher(content);
+            if (groupMatcher.find()) {
+                group = groupMatcher.group(1);
+            }
+
+            Pattern versionPattern = Pattern.compile("(?m)^\\s*version\\s*=\\s*['\"]([^'\"]+)['\"]");
+            Matcher versionMatcher = versionPattern.matcher(content);
+            if (versionMatcher.find()) {
+                version = versionMatcher.group(1);
+            }
+
+            Pattern javaVerPattern = Pattern.compile("sourceCompatibility\\s*=\\s*['\"]?([\\d\\.]+)['\"]?");
+            Matcher javaVerMatcher = javaVerPattern.matcher(content);
+            if (javaVerMatcher.find()) {
+                javaVersion = javaVerMatcher.group(1);
+            } else {
+                Pattern toolchainPattern = Pattern.compile("languageVersion\\s*=\\s*JavaLanguageVersion\\.of\\((\\d+)\\)");
+                Matcher toolchainMatcher = toolchainPattern.matcher(content);
+                if (toolchainMatcher.find()) {
+                    javaVersion = toolchainMatcher.group(1);
+                }
+            }
+
+            boolean springBootProject = content.contains("org.springframework.boot")
+                    || content.contains("spring-boot");
+            
+            boolean hasApplicationPlugin = content.contains("id 'application'")
+                    || content.contains("id(\"application\")")
+                    || content.contains("apply plugin: 'application'")
+                    || content.contains("apply plugin: \"application\"");
+            
+            boolean executableCandidate = springBootProject || hasApplicationPlugin;
+            String artifactId = gradlePath.getParent().getFileName().toString();
+
+            return new GradleMetadata(
+                    repositoryPath.relativize(gradlePath).toString(),
+                    group,
+                    artifactId,
+                    version,
+                    javaVersion,
+                    springBootProject,
+                    executableCandidate
+            );
+        } catch (Exception exception) {
+            throw new RepositoryAnalysisException("Unable to parse gradle build file at " + gradlePath, exception);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private NpmMetadata parseNpm(Path repositoryPath, Path npmPath) {
+        try {
+            String content = Files.readString(npmPath);
+            Map<String, Object> pkg = objectMapper.readValue(content, Map.class);
+            String name = (String) pkg.get("name");
+            if (name == null) {
+                name = npmPath.getParent().getFileName().toString();
+            }
+            String version = (String) pkg.get("version");
+            String mainScript = (String) pkg.get("main");
+            
+            List<String> scripts = new ArrayList<>();
+            if (pkg.get("scripts") instanceof Map<?, ?> scriptsMap) {
+                for (Object key : scriptsMap.keySet()) {
+                    scripts.add(String.valueOf(key));
+                }
+            }
+            
+            boolean executableCandidate = true;
+
+            return new NpmMetadata(
+                    repositoryPath.relativize(npmPath).toString(),
+                    name,
+                    version,
+                    mainScript,
+                    scripts,
+                    executableCandidate
+            );
+        } catch (Exception exception) {
+            throw new RepositoryAnalysisException("Unable to parse package.json at " + npmPath, exception);
         }
     }
 
@@ -310,30 +447,35 @@ public class RepositoryAnalysisService {
         }
     }
 
-    private List<String> detectDatabaseTechnologies(List<PomMetadata> pomMetadata, List<Path> pomFiles) {
+    private List<String> detectDatabaseTechnologies(List<Path> pomFiles, List<Path> gradleFiles, List<Path> npmFiles) {
         Set<String> databases = new LinkedHashSet<>();
-        for (Path pomFile : pomFiles) {
+        List<Path> files = new ArrayList<>();
+        files.addAll(pomFiles);
+        files.addAll(gradleFiles);
+        files.addAll(npmFiles);
+
+        for (Path file : files) {
             try {
-                String xml = Files.readString(pomFile).toLowerCase();
+                String content = Files.readString(file).toLowerCase();
                 Map<String, String> matches = Map.of(
                         "mongodb", "mongodb",
+                        "mongoose", "mongodb",
                         "postgresql", "postgresql",
+                        "pg", "postgresql",
                         "mysql", "mysql",
+                        "mysql2", "mysql",
                         "mariadb", "mariadb",
                         "h2", "h2",
                         "redis", "redis"
                 );
                 matches.forEach((needle, database) -> {
-                    if (xml.contains(needle)) {
+                    if (content.contains(needle)) {
                         databases.add(database);
                     }
                 });
             } catch (IOException ignored) {
                 // Best-effort analysis should continue across unreadable files.
             }
-        }
-        if (pomMetadata.stream().anyMatch(metadata -> metadata.springBootProject() && databases.isEmpty())) {
-            return new ArrayList<>(databases);
         }
         return new ArrayList<>(databases);
     }

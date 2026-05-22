@@ -1,4 +1,4 @@
-package com.aidocker.agent.sprint2;
+package com.aidocker.agent.deployment;
 
 import com.aidocker.agent.auth.GitHubUser;
 import com.aidocker.agent.conversation.ConversationService;
@@ -12,48 +12,48 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-public class Sprint2PullRequestService {
+public class PullRequestPermissionService {
 
     private final RepositoryWorkspaceRepository repositoryWorkspaceRepository;
     private final GitHubAccessTokenService gitHubAccessTokenService;
-    private final BranchManagementService branchManagementService;
-    private final GitCommitPushService gitCommitPushService;
-    private final PullRequestIntegrationService pullRequestIntegrationService;
+    private final DeploymentBranchService deploymentBranchService;
+    private final PermissionCheckCommitService permissionCheckCommitService;
+    private final GitHubPullRequestService gitHubPullRequestService;
     private final ConversationService conversationService;
     private final Clock clock;
 
-    public Sprint2PullRequestService(
+    public PullRequestPermissionService(
             RepositoryWorkspaceRepository repositoryWorkspaceRepository,
             GitHubAccessTokenService gitHubAccessTokenService,
-            BranchManagementService branchManagementService,
-            GitCommitPushService gitCommitPushService,
-            PullRequestIntegrationService pullRequestIntegrationService,
+            DeploymentBranchService deploymentBranchService,
+            PermissionCheckCommitService permissionCheckCommitService,
+            GitHubPullRequestService gitHubPullRequestService,
             ConversationService conversationService,
             Clock clock
     ) {
         this.repositoryWorkspaceRepository = repositoryWorkspaceRepository;
         this.gitHubAccessTokenService = gitHubAccessTokenService;
-        this.branchManagementService = branchManagementService;
-        this.gitCommitPushService = gitCommitPushService;
-        this.pullRequestIntegrationService = pullRequestIntegrationService;
+        this.deploymentBranchService = deploymentBranchService;
+        this.permissionCheckCommitService = permissionCheckCommitService;
+        this.gitHubPullRequestService = gitHubPullRequestService;
         this.conversationService = conversationService;
         this.clock = clock;
     }
 
-    public CreateDummyPullRequestResponse createDummyPullRequest(
+    public CreatePermissionCheckPullRequestResponse createPermissionCheckPullRequest(
             String principalName,
             GitHubUser user,
-            CreateDummyPullRequestRequest request
+            CreatePermissionCheckPullRequestRequest request
     ) {
         RepositoryWorkspace workspace = repositoryWorkspaceRepository
                 .findByIdAndGithubUserId(request.repositoryWorkspaceId(), user.githubUserId())
-                .orElseThrow(() -> new Sprint2Exception("Repository workspace was not found for the logged-in user."));
+                .orElseThrow(() -> new DeploymentPermissionException("Repository workspace was not found for the logged-in user."));
 
         String accessToken = gitHubAccessTokenService.tokenFor(principalName);
         Path repositoryPath = Path.of(workspace.getLocalPath());
 
         try {
-            String deploymentBranch = branchManagementService.createDeployReadyBranch(repositoryPath);
+            String deploymentBranch = deploymentBranchService.createDeployReadyBranch(repositoryPath);
             workspace.markBranchReady(deploymentBranch, clock.instant());
             repositoryWorkspaceRepository.save(workspace);
             conversationService.updateRepositoryState(
@@ -65,7 +65,7 @@ public class Sprint2PullRequestService {
                     workspace.getLocalPath()
             );
 
-            String commitId = gitCommitPushService.createDummyFileCommitAndPush(repositoryPath, deploymentBranch, accessToken);
+            String commitId = permissionCheckCommitService.createPermissionCheckCommitAndPush(repositoryPath, deploymentBranch, accessToken);
             workspace.markPushed(commitId, clock.instant());
             repositoryWorkspaceRepository.save(workspace);
             conversationService.updateRepositoryState(
@@ -78,7 +78,7 @@ public class Sprint2PullRequestService {
             );
 
             String baseBranch = baseBranch(request, workspace);
-            PullRequestResult pullRequest = pullRequestIntegrationService.createPullRequest(
+            PullRequestResult pullRequest = gitHubPullRequestService.createPullRequest(
                     accessToken,
                     GitHubRepository.fromHttpsUrl(workspace.getGitUrl()),
                     deploymentBranch,
@@ -95,14 +95,14 @@ public class Sprint2PullRequestService {
                     workspace.getLocalPath()
             );
 
-            return new CreateDummyPullRequestResponse(
+            return new CreatePermissionCheckPullRequestResponse(
                     workspace.getId(),
                     deploymentBranch,
                     commitId,
                     pullRequest.url(),
                     pullRequest.number(),
                     "PR_CREATED",
-                    "Dummy PR permission check completed.\nBranch: " + deploymentBranch + "\nCommit: " + commitId + "\nPull request:\n" + pullRequest.url() + "\n\nNext: I will ask for Docker, CI/CD, and Kubernetes details."
+                    "Permission check pull request completed.\nBranch: " + deploymentBranch + "\nCommit: " + commitId + "\nPull request:\n" + pullRequest.url() + "\n\nNext: I will ask for Docker, CI/CD, and Kubernetes details."
             );
         } catch (RuntimeException exception) {
             workspace.markPullRequestFailed(exception.getMessage(), clock.instant());
@@ -119,7 +119,7 @@ public class Sprint2PullRequestService {
         }
     }
 
-    private String baseBranch(CreateDummyPullRequestRequest request, RepositoryWorkspace workspace) {
+    private String baseBranch(CreatePermissionCheckPullRequestRequest request, RepositoryWorkspace workspace) {
         if (StringUtils.hasText(request.baseBranch())) {
             return request.baseBranch().trim();
         }
