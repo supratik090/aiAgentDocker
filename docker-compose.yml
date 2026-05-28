@@ -1,0 +1,60 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        MODULE_PATH: "backend"
+    image: agent:local
+    ports:
+      - "9040:9040"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - MODULE_PATH=${MODULE_PATH:-}
+      - MONGODB_URI=${MONGODB_URI:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OLLAMA_ENABLED=${OLLAMA_ENABLED:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - REPOSITORY_CLONE_ROOT=${REPOSITORY_CLONE_ROOT:-}
+      - SERVER_PORT=${SERVER_PORT:-}
+      - SPRING_DATA_MONGODB_URI=mongodb://database:27017/app
+    depends_on:
+      - database
+
+  ai-docker-agent-frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        MODULE_PATH: "frontend"
+    image: ai-docker-agent-frontend:local
+    ports:
+      - "9041:9040"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - MODULE_PATH=${MODULE_PATH:-}
+      - MONGODB_URI=${MONGODB_URI:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OLLAMA_ENABLED=${OLLAMA_ENABLED:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - REPOSITORY_CLONE_ROOT=${REPOSITORY_CLONE_ROOT:-}
+      - SERVER_PORT=${SERVER_PORT:-}
+      - SPRING_DATA_MONGODB_URI=mongodb://database:27017/app
+    depends_on:
+      - database
+
+  database:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - database-data:/data/db
+
+volumes:
+  database-data:
